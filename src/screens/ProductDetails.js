@@ -1,5 +1,5 @@
 import React, {useRef} from 'react'
-import {View, Text, StyleSheet, FlatList, Dimensions, Pressable} from 'react-native'
+import {View, Text, FlatList, Pressable} from 'react-native'
 
 import {useRoute} from '@react-navigation/native'
 import {SafeAreaView} from 'react-native-safe-area-context'
@@ -9,170 +9,95 @@ import Icon from 'react-native-vector-icons/Entypo'
 import {useCartStore} from '../context/CartProvider'
 import Cart, {OPEN_HEIGHT} from '../components/Cart'
 
-const IMAGE_HEIGHT = Dimensions.get('window').height * 0.4
+import styles from '../styles/ProductDetailsStyles'
+import globalStyles from '../styles/globalStyles'
+
 const foodInfo = [
   {title: 'Energy', value: '210 cal', bgColor: '#fb6d37'},
   {title: 'Proteins', value: '14.6 cal', bgColor: '#ffbe3d'},
   {title: 'Fats', value: '14.6 cal', bgColor: '#7651dc'},
   {title: 'Carbs', value: '14.6 cal', bgColor: '#84b468'},
 ]
-export default function ProductDetails() {
-  const {cartList, addToCart} = useCartStore()
+
+const FoodInfoCard = ({item}) => (
+  <View style={[styles.foodInfo, {backgroundColor: item.bgColor}]}>
+    <Text style={styles.foodInfoTitle}>{item.title}</Text>
+    <Text style={styles.foodInfoValue}>{item.value}</Text>
+  </View>
+)
+
+const QuantitySelector = () => (
+  <View style={styles.quantityContainer}>
+    <Icon name="plus" size={20} color="black" />
+    <Text style={styles.quantityText}>1</Text>
+    <Icon name="minus" size={20} color="black" />
+  </View>
+)
+
+const AddToCartButton = ({price, onPress}) => (
+  <Pressable style={styles.cartButtonContainer} onPress={onPress}>
+    <View style={styles.cartButton}>
+      <Text style={styles.cartText}>{price}</Text>
+      <Text style={styles.cartText}>Add</Text>
+    </View>
+  </Pressable>
+)
+
+const ProductDetails = () => {
   const {params} = useRoute()
+  const {productInfo, tagName} = params || {}
+  const {cartList, addToCart} = useCartStore()
   const cartRef = useRef()
   return (
     <>
       <View style={styles.container}>
-        <View style={{flex: 1}}>
-          <View style={styles.center}>
+        <View style={globalStyles.fill}>
+          <View style={globalStyles.center}>
             {/* Shared Element Image */}
             <Animated.Image
-              style={{width: '100%', height: IMAGE_HEIGHT}}
-              sharedTransitionTag={params.tagName}
-              source={{
-                uri: params?.productInfo?.image,
-              }}
+              style={styles.image}
+              sharedTransitionTag={tagName}
+              source={{uri: productInfo?.image}}
             />
-            {/* <View style={styles.backBtnWrapper}>
-            <Icon name="arrow-long-left" size={20} color="grey" />
-          </View> */}
           </View>
 
           {/* Title & description */}
           <Text style={styles.title}>Avocado Salad</Text>
           <Text style={styles.weight}>300 g</Text>
-          <Text style={[styles.weight, {marginVertical: 20}]}>
+          <Text style={[styles.weight, styles.description]}>
             Homemade italian dressing, cherry tomatoes, green olives,Homemade italian
           </Text>
 
           {/* Food Info */}
-          <View>
-            <FlatList
-              data={foodInfo}
-              keyExtractor={(_, index) => index.toString()}
-              horizontal={true}
-              ItemSeparatorComponent={<View style={{width: 10}} />}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({item}) => (
-                <View
-                  style={[
-                    styles.foodInfo,
-                    {
-                      backgroundColor: item.bgColor,
-                    },
-                  ]}>
-                  <Text
-                    style={[
-                      styles.whiteColor,
-                      {
-                        fontSize: 12,
-                        marginBottom: 5,
-                      },
-                    ]}>
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.whiteColor, {fontWeight: 'bold'}]}>{item.value}</Text>
-                </View>
-              )}
-            />
-          </View>
+          <FlatList
+            data={foodInfo}
+            horizontal
+            keyExtractor={(_, i) => i.toString()}
+            showsHorizontalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            renderItem={({item}) => <FoodInfoCard item={item} />}
+          />
         </View>
+
         {/* Add to Cart */}
-        <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              width: '45%',
-              backgroundColor: '#f2f4f8',
-              padding: 15,
-              borderRadius: 10,
-            }}>
-            <Icon name="plus" color="black" size={20} />
-            <Text style={{marginHorizontal: 10, fontWeight: 'bold'}}>1</Text>
-            <Icon name="minus" color="black" size={20} />
-          </View>
+        <View style={styles.actionRow}>
+          <QuantitySelector />
 
-          <Pressable
-            style={{width: '45%'}}
+          <AddToCartButton
+            price="$300"
             onPress={() => {
-              addToCart(params?.productInfo)
+              addToCart(productInfo)
               cartRef.current.open(OPEN_HEIGHT)
-            }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                // width: '45%',
-                backgroundColor: '#1d212b',
-                padding: 15,
-                borderRadius: 10,
-              }}>
-              <Text
-                style={{
-                  marginHorizontal: 10,
-                  fontWeight: 'bold',
-                  color: 'white',
-                }}>
-                $300
-              </Text>
-
-              <Text
-                style={{
-                  marginHorizontal: 10,
-                  fontWeight: 'bold',
-                  color: 'white',
-                }}>
-                Add
-              </Text>
-            </View>
-          </Pressable>
+            }}
+          />
         </View>
+
         <SafeAreaView />
       </View>
+
       <Cart ref={cartRef} items={cartList} />
     </>
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 25,
-    backgroundColor: '#f9f9f9',
-    paddingTop: 50,
-  },
-  center: {
-    justifyContent: 'center',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  weight: {
-    color: 'grey',
-    fontSize: 17,
-  },
-  foodInfo: {
-    paddingTop: 40,
-    paddingBottom: 10,
-    paddingHorizontal: 15,
-    borderRadius: 10,
-  },
-  whiteColor: {
-    color: 'white',
-  },
-  backBtnWrapper: {
-    position: 'absolute',
-    left: 0,
-    top: 20,
-    backgroundColor: '#e1e1e5',
-    padding: 10,
-    borderRadius: 5,
-  },
-})
+export default ProductDetails

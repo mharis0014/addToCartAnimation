@@ -1,6 +1,7 @@
-import {Pressable, View} from 'react-native'
 import React from 'react'
+import {Pressable, View} from 'react-native'
 import Animated, {Extrapolation, interpolate, useAnimatedStyle} from 'react-native-reanimated'
+
 import {OPEN_HEIGHT, HEIGHT} from './Cart'
 import {FakeImage} from './FakeImage'
 

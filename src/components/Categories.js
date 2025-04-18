@@ -1,37 +1,35 @@
 import React from 'react'
-import {View, Text, Image, StyleSheet, FlatList} from 'react-native'
+import {View, Text, Image, FlatList} from 'react-native'
+
+import styles from '../styles/CategoriesStyles'
 
 const items = [
   {title: 'salads', image: require('../images/salad.png')},
   {title: 'soups', image: require('../images/hot-soup.png')},
   {title: 'burgers', image: require('../images/cheeseburger.png')},
 ]
-export default function Categories() {
+const Categories = () => {
+  const renderItem = ({item, index}) => {
+    const isFirst = index === 0
+
+    return (
+      <View style={[styles.categoryItem, isFirst && styles.firstCategoryHighlight]}>
+        <Image source={item.image} style={styles.categoryIcon} />
+        <Text style={styles.categoryText}>{item.title}</Text>
+      </View>
+    )
+  }
+
   return (
     <FlatList
       data={items}
-      horizontal={true}
+      horizontal
+      showsHorizontalScrollIndicator={false}
       keyExtractor={(_, index) => index.toString()}
-      ItemSeparatorComponent={<View style={{width: 10}} />}
-      renderItem={({item, index}) => (
-        <View style={[styles.category, index === 0 && {backgroundColor: '#d4eac8'}]}>
-          <Image source={item.image} style={{width: 20, height: 20}} />
-          <Text style={styles.title}>{item.title}</Text>
-        </View>
-      )}
+      ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+      renderItem={renderItem}
     />
   )
 }
 
-const styles = StyleSheet.create({
-  category: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f4f4f9',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  title: {fontSize: 12, marginLeft: 5, fontWeight: 'bold'},
-})
+export default Categories

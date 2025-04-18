@@ -1,159 +1,133 @@
 import React, {forwardRef, useImperativeHandle, useState} from 'react'
-import {View, Text, StyleSheet, Pressable} from 'react-native'
+import {View, Text, Pressable} from 'react-native'
 
 import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  interpolate,
   Extrapolation,
   FadeIn,
-  interpolate,
   runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
 } from 'react-native-reanimated'
 
-// import {items as data} from '../components/ProductList'
 import CartItems from './CartItems'
 import FakeCartItems from './FakeCartItems.js'
+import styles from '../styles/CartStyle.js'
 
 export const HEIGHT = 500
 export const OPEN_HEIGHT = HEIGHT * 0.7
 
-export default forwardRef(function Cart(props, ref) {
-  const translateX = useSharedValue(HEIGHT)
-  const start = useSharedValue(0)
+const Cart = forwardRef(({items}, ref) => {
+  const translateY = useSharedValue(HEIGHT)
+  const initialY = useSharedValue(0)
 
-  const [toggle, setToggle] = useState(false)
-  const [visible, setVisible] = useState(false)
-  const [notify, setNotify] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
+  const [showPrice, setShowPrice] = useState(false)
   const [showFakeItems, setShowFakeItems] = useState(true)
 
-  const translateStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{translateY: translateX.value}],
-    }
-  })
+  /** Animate Cart Slide */
+  const cartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{translateY: translateY.value}],
+  }))
 
-  const handleOpen = value => {
-    setNotify(true)
-    translateX.value = withTiming(value || 0, {duration: 500})
-  }
-
-  const handleClose = value => {
-    const reset = () => {
-      setToggle(false)
-      setVisible(false)
-      setNotify(false)
-      setShowFakeItems(true)
-    }
-    translateX.value = withTiming(HEIGHT, {duration: 500}, isFinished => {
-      if (isFinished) {
-        runOnJS(reset)()
-      }
-    })
-  }
-
-  useImperativeHandle(
-    ref,
-    () => {
-      return {
-        open: handleOpen,
-      }
-    },
-    [],
-  )
-
-  const orderTranslateStyle = useAnimatedStyle(() => {
-    const value = interpolate(translateX.value, [HEIGHT, 0], [80, 0], {
+  /** Animate Order Button */
+  const orderButtonStyle = useAnimatedStyle(() => {
+    const y = interpolate(translateY.value, [HEIGHT, 0], [80, 0], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,
     })
-
-    return {
-      transform: [{translateY: withSpring(value)}],
-    }
+    return {transform: [{translateY: withSpring(y)}]}
   })
 
-  const AnimatedPriceStyle = useAnimatedStyle(() => {
-    const value = interpolate(translateX.value, [OPEN_HEIGHT, 0], [0, -70], {
+  /** Animate Price Label */
+  const priceAnimatedStyle = useAnimatedStyle(() => {
+    const y = interpolate(translateY.value, [OPEN_HEIGHT, 0], [0, -70], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,
     })
-
-    return {
-      transform: [{translateY: value}],
-    }
+    return {transform: [{translateY: y}]}
   })
 
-  const hideFakeItems = finished => {
+  /** Show Real Cart Items After Fake Ones */
+  const handleFakeItemsDone = finished => {
     'worklet'
     if (finished) runOnJS(setShowFakeItems)(false)
   }
 
+  /** Open Cart */
+  const openCart = (toY = 0) => {
+    setShowPrice(true)
+    translateY.value = withTiming(toY, {duration: 500})
+  }
+
+  /** Close Cart */
+  const closeCart = () => {
+    const resetState = () => {
+      setIsAnimating(false)
+      setIsVisible(false)
+      setShowPrice(false)
+      setShowFakeItems(true)
+    }
+
+    translateY.value = withTiming(HEIGHT, {duration: 500}, isFinished => {
+      if (isFinished) runOnJS(resetState)()
+    })
+  }
+
+  /** Expose Open Method via Ref */
+  useImperativeHandle(ref, () => ({open: openCart}), [])
+
   return (
     <>
-      <Animated.View style={[styles.container, translateStyle]}>
-        <Pressable onPress={handleClose}>
-          <Text style={[styles.highlight, styles.heading]}>Cart</Text>
+      <Animated.View style={[styles.container, cartAnimatedStyle]}>
+        <Pressable onPress={closeCart}>
+          <Text style={[styles.title, styles.sectionText]}>Cart</Text>
         </Pressable>
 
         <View style={{height: 192}}>
-          {/* Scrollable Real Cart Items */}
-          {visible && <CartItems hideFakeItems={hideFakeItems} data={props.items} />}
+          {isVisible && <CartItems data={items} hideFakeItems={handleFakeItemsDone} />}
 
-          {/* Cart Fake Items */}
           {showFakeItems && (
             <FakeCartItems
-              translateX={translateX}
-              setToggle={setToggle}
-              toggle={toggle}
-              handleOpen={handleOpen}
-              data={props.items}
-              start={start}
-              notify={notify}
-              visible={visible}
-              setVisible={setVisible}
+              translateX={translateY}
+              toggle={isAnimating}
+              setToggle={setIsAnimating}
+              handleOpen={openCart}
+              data={items}
+              start={initialY}
+              notify={showPrice}
+              visible={isVisible}
+              setVisible={setIsVisible}
             />
           )}
         </View>
 
-        {/* Cart Bottom Section */}
-        {visible && (
-          <>
-            <Animated.View entering={FadeIn} style={{opacity: 0}}>
-              <View
-                style={{
-                  borderTopWidth: 2,
-                  borderTopColor: 'rgba(255, 255, 255, 0.2)',
-                  paddingTop: 10,
-                  marginBottom: 20,
-                }}>
-                <Text style={styles.highlight}>Promo Code</Text>
-                <Text style={[styles.highlight, {color: 'rgba(255, 255, 255, 0.5)', marginTop: 5}]}>
-                  Enter the promo code & get discount
-                </Text>
-              </View>
+        {isVisible && (
+          <Animated.View entering={FadeIn} style={{opacity: 0}}>
+            <View style={styles.promoContainer}>
+              <Text style={styles.sectionText}>Promo Code</Text>
+              <Text style={[styles.sectionText, styles.promoHint]}>
+                Enter the promo code & get discount
+              </Text>
+            </View>
 
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  marginTop: 30,
-                }}>
-                <Text style={[styles.highlight, {fontSize: 22}]}>Total</Text>
-                <Text style={[styles.highlight, {fontSize: 22}]}></Text>
-              </View>
-            </Animated.View>
-          </>
+            <View style={styles.totalContainer}>
+              <Text style={[styles.sectionText, styles.totalText]}>Total</Text>
+              <Text style={[styles.sectionText, styles.totalText]}></Text>
+            </View>
+          </Animated.View>
         )}
 
-        <Animated.View style={[styles.orderContainer, orderTranslateStyle]}>
+        <Animated.View style={[styles.orderButton, orderButtonStyle]}>
           <Text style={styles.orderText}>Order</Text>
         </Animated.View>
       </Animated.View>
 
-      {notify && (
-        <Animated.Text style={[styles.highlight, styles.price, AnimatedPriceStyle]}>
+      {showPrice && (
+        <Animated.Text style={[styles.sectionText, styles.price, priceAnimatedStyle]}>
           $200
         </Animated.Text>
       )}
@@ -161,50 +135,4 @@ export default forwardRef(function Cart(props, ref) {
   )
 })
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#7651dc',
-    borderTopStartRadius: 20,
-    borderTopEndRadius: 20,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: '100%',
-    height: HEIGHT,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  highlight: {
-    fontWeight: 'bold',
-    color: 'white',
-    fontSize: 12,
-  },
-  heading: {fontSize: 20, marginBottom: 20},
-  orderContainer: {
-    width: '70%',
-    backgroundColor: 'black',
-    paddingVertical: 25,
-    position: 'absolute',
-    bottom: -20,
-    right: 0,
-    borderTopLeftRadius: 10,
-    zIndex: 999,
-    height: 100,
-  },
-  orderText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 20,
-  },
-  price: {
-    fontSize: 22,
-    position: 'absolute',
-    bottom: 50,
-    right: 20,
-  },
-})
+export default Cart
